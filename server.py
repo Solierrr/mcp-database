@@ -1,7 +1,7 @@
 """Servidor MCP que expõe o Postgres 'Negócio'."""
 
 import uvicorn
-from mcp.server.mcpserver import MCPServer
+from mcp.server.fastmcp import FastMCP
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -9,11 +9,13 @@ from starlette.responses import JSONResponse
 from postgres_client import get_cursor
 from settings import settings
 
-mcp = MCPServer("solaria-negocio")
+mcp = FastMCP("solaria-negocio")
 
 
 @mcp.tool()
-def listar_ofertas_de_placas(potencia_minima_wp: float = 0, marca: str = "") -> list[dict]:
+def listar_ofertas_de_placas(
+    potencia_minima_wp: float = 0, marca: str = ""
+) -> list[dict]:
     """Lista ofertas de placas solares disponíveis, com fornecedor, preço e
     potência. Filtra por potência mínima em Wp e/ou marca, se informado."""
     with get_cursor() as cur:
@@ -38,7 +40,10 @@ def listar_ofertas_de_placas(potencia_minima_wp: float = 0, marca: str = "") -> 
               AND (%(marca)s = '' OR m.brand ILIKE %(marca)s)
             ORDER BY o.unit_price ASC;
             """,
-            {"potencia_minima_wp": potencia_minima_wp, "marca": f"%{marca}%" if marca else ""},
+            {
+                "potencia_minima_wp": potencia_minima_wp,
+                "marca": f"%{marca}%" if marca else "",
+            },
         )
         return cur.fetchall()
 
@@ -71,7 +76,10 @@ def buscar_tecnicos_credenciados(profissao: str = "", cidade: str = "") -> list[
               AND (%(cidade)s = '' OR addr.city ILIKE %(cidade)s)
             ORDER BY p.name;
             """,
-            {"profissao": f"%{profissao}%" if profissao else "", "cidade": f"%{cidade}%" if cidade else ""},
+            {
+                "profissao": f"%{profissao}%" if profissao else "",
+                "cidade": f"%{cidade}%" if cidade else "",
+            },
         )
         return cur.fetchall()
 
@@ -79,7 +87,9 @@ def buscar_tecnicos_credenciados(profissao: str = "", cidade: str = "") -> list[
 class ExigirAPIKey(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.headers.get("x-api-key") != settings.MCP_API_KEY:
-            return JSONResponse({"erro": "API key ausente ou inválida"}, status_code=401)
+            return JSONResponse(
+                {"erro": "API key ausente ou inválida"}, status_code=401
+            )
         return await call_next(request)
 
 

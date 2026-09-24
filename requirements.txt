@@ -1,8 +1,8 @@
-mcp==2.0.0
+mcp==1.29.1
 psycopg2-binary
 pydantic-settings
 uvicorn
 starlette
 pytest
 pytest-cov
-httpx
+httpx2
