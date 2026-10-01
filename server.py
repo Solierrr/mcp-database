@@ -2,6 +2,7 @@
 
 import uvicorn
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -9,7 +10,21 @@ from starlette.responses import JSONResponse
 from postgres_client import get_cursor
 from settings import settings
 
-mcp = FastMCP("solaria-negocio")
+mcp = FastMCP(
+    "solaria-negocio",
+    transport_security=TransportSecuritySettings(
+        allowed_hosts=[
+            "127.0.0.1:*",
+            "localhost:*",
+            "api-mcp-wey6.onrender.com",
+        ],
+        allowed_origins=[
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "https://api-mcp-wey6.onrender.com",
+        ],
+    ),
+)
 
 
 @mcp.tool()

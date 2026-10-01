@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     MCP_API_KEY: str
     PORT: int = 8001
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
     def DATABASE_URL(self) -> str:
