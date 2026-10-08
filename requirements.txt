@@ -1,8 +1,8 @@
 mcp==1.29.1
-psycopg2-binary
-pydantic-settings
-uvicorn
-starlette
-pytest
-pytest-cov
-httpx2
+psycopg2-binary==2.9.13
+pydantic-settings==2.15.0
+uvicorn==0.54.0
+starlette==1.7.0
+pytest==9.1.1
+pytest-cov==7.1.0
+httpx2==2.13.1
