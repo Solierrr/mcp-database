@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/Solierrr/mcp-database/compare/v0.2.0...v0.3.0) (2026-10-09)
+
+
+### Features
+
+* add the local run commands ([54432ec](https://github.com/Solierrr/mcp-database/commit/54432ec88e415c0bcecdf02a8bee20be4b708f91))
+
+
+### Bug Fixes
+
+* mcp allowed hosts render ([#23](https://github.com/Solierrr/mcp-database/issues/23)) ([f842b9f](https://github.com/Solierrr/mcp-database/commit/f842b9f27981c8190ffb1bb347692b484e93d40e))
+
 ## [0.2.0](https://github.com/Solierrr/mcp-database/compare/v0.1.0...v0.2.0) (2026-09-30)
 
 
