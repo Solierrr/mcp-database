@@ -2,8 +2,10 @@
 
 Servidor MCP que expõe consultas ao Postgres de negócio da Solaria para o
 `ai-assistant`, por meio do Model Context Protocol autenticado por API key.
-Este repositório é somente de leitura e não é dono do schema; a referência
-fica em `docs/schema_negocio.sql`.
+Este repositório é somente de leitura e não é dono do schema; a fonte do
+schema é o `database-console` (`db/core/schema.sql` e as migrations em `db/core/migrations`).
+O acesso ao banco deve usar o usuário somente leitura `solaria_ro_mcp` (contrato em
+`db/roles/contracts.json` do `database-console`).
 
 [![License](https://img.shields.io/github/license/Solierrr/api-mcp)](https://github.com/Solierrr/api-mcp/blob/main/LICENSE)
 [![Release](https://img.shields.io/github/v/release/Solierrr/api-mcp)](https://github.com/Solierrr/api-mcp/releases)
