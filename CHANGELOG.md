@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/Solierrr/mcp-database/compare/v0.2.0...v0.3.0) (2026-10-18)
+
+
+### Features
+
+* add the infrastructure items tool ([#29](https://github.com/Solierrr/mcp-database/issues/29)) ([b2a08a7](https://github.com/Solierrr/mcp-database/commit/b2a08a7dba46a33d35479e974fb068c93df7dbf3))
+* add the local run commands ([54432ec](https://github.com/Solierrr/mcp-database/commit/54432ec88e415c0bcecdf02a8bee20be4b708f91))
+* expose the ranked recommendation feeds as mcp tools ([#28](https://github.com/Solierrr/mcp-database/issues/28)) ([faa6e0f](https://github.com/Solierrr/mcp-database/commit/faa6e0fbfb912d02418f827a66432e178a044dd6))
+
+
+### Bug Fixes
+
+* mcp allowed hosts render ([#23](https://github.com/Solierrr/mcp-database/issues/23)) ([f842b9f](https://github.com/Solierrr/mcp-database/commit/f842b9f27981c8190ffb1bb347692b484e93d40e))
+
 ## [0.2.0](https://github.com/Solierrr/mcp-database/compare/v0.1.0...v0.2.0) (2026-09-30)
 
 
