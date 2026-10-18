@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     DB_POSTGRES_PASSWORD: str
     DB_POSTGRES_BUSINESS: str
     MCP_API_KEY: str
+    RECOMMENDATION_API_URL: str = "http://localhost:8000"
+    RECOMMENDATION_API_KEY: str | None = None
     PORT: int = 8001
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

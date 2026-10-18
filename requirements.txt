@@ -6,3 +6,4 @@ starlette
 pytest
 pytest-cov
 httpx2
+httpx

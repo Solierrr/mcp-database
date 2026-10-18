@@ -1,5 +1,7 @@
 """Servidor MCP que expõe o Postgres 'Negócio'."""
 
+from typing import Literal
+
 import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -8,7 +10,10 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from postgres_client import get_cursor
+from recommendation_client import buscar_feed
 from settings import settings
+
+_LIMITE_MAXIMO = 20
 
 mcp = FastMCP(
     "solaria-negocio",
@@ -27,38 +32,75 @@ mcp = FastMCP(
 )
 
 
+def _limitar(limite: int) -> int:
+    return max(1, min(limite, _LIMITE_MAXIMO))
+
+
 @mcp.tool()
-def listar_ofertas_de_placas(
-    potencia_minima_wp: float = 0, marca: str = ""
-) -> list[dict]:
-    """Lista ofertas de placas solares disponíveis, com fornecedor, preço e
-    potência. Filtra por potência mínima em Wp e/ou marca, se informado."""
+async def recomendar_ofertas(
+    estrategia: Literal[
+        "best_value", "most_efficient", "nearest_available", "most_proven"
+    ] = "best_value",
+    unidade_id: str = "",
+    limite: int = 10,
+) -> dict:
+    """Recomenda ofertas de placas solares já ranqueadas pela api-recommendation
+    (top-N com a métrica e os motivos de cada posição). Estratégias:
+    best_value (menor preço por Wp), most_efficient (maior eficiência),
+    nearest_available (fornecedor mais próximo da unidade; exige unidade_id) e
+    most_proven (mais presente em propostas aceitas). Cruze o resultado com as
+    necessidades do usuário; não reordene nem invente ofertas."""
+    return await buscar_feed(
+        "offers",
+        {"strategy": estrategia, "local_unit_id": unidade_id},
+        _limitar(limite),
+    )
+
+
+@mcp.tool()
+async def recomendar_profissionais(
+    estrategia: Literal[
+        "best_match", "top_rated", "most_qualified", "most_experienced", "most_reliable"
+    ] = "best_match",
+    profissao_id: str = "",
+    limite: int = 10,
+) -> dict:
+    """Recomenda profissionais técnicos já ranqueados pela api-recommendation.
+    Estratégias: best_match (equilíbrio geral), top_rated (melhor avaliação),
+    most_qualified (mais certificações válidas), most_experienced (mais
+    serviços concluídos) e most_reliable (menos cancelamentos). Para filtrar
+    por profissão, use o id devolvido por listar_profissoes."""
+    return await buscar_feed(
+        "professionals",
+        {"strategy": estrategia, "profession_id": profissao_id},
+        _limitar(limite),
+    )
+
+
+@mcp.tool()
+async def recomendar_fornecedores(
+    estrategia: Literal["most_proven", "broadest_catalog", "nearest"] = "most_proven",
+    unidade_id: str = "",
+    limite: int = 10,
+) -> dict:
+    """Recomenda empresas fornecedoras já ranqueadas pela api-recommendation.
+    Estratégias: most_proven (mais propostas aceitas), broadest_catalog (maior
+    catálogo de ofertas) e nearest (mais próxima da unidade; exige
+    unidade_id)."""
+    return await buscar_feed(
+        "suppliers",
+        {"strategy": estrategia, "local_unit_id": unidade_id},
+        _limitar(limite),
+    )
+
+
+@mcp.tool()
+def listar_profissoes() -> list[dict]:
+    """Lista as profissões cadastradas, com o id usado para filtrar
+    recomendar_profissionais."""
     with get_cursor() as cur:
         cur.execute(
-            """
-            SELECT
-                comp.trade_name AS fornecedor,
-                m.brand AS marca,
-                m.model AS modelo,
-                m.power_wp AS potencia_wp,
-                m.efficiency AS eficiencia_pct,
-                o.unit_price AS preco_unitario,
-                o.availability AS disponibilidade,
-                o.expiration_date AS validade
-            FROM offer o
-            JOIN supplier s ON s.id = o.fk_supplier
-            JOIN company comp ON comp.id = s.fk_company
-            JOIN model m ON m.id = o.fk_model
-            WHERE s.status = 'ACTIVE'
-              AND m.status = 'APPROVED'
-              AND m.power_wp >= %(potencia_minima_wp)s
-              AND (%(marca)s = '' OR m.brand ILIKE %(marca)s)
-            ORDER BY o.unit_price ASC;
-            """,
-            {
-                "potencia_minima_wp": potencia_minima_wp,
-                "marca": f"%{marca}%" if marca else "",
-            },
+            "SELECT id::text AS id, name AS nome FROM profession ORDER BY name;"
         )
         return cur.fetchall()
 
