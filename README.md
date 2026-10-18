@@ -25,6 +25,8 @@ Ferramentas disponíveis:
   `most_experienced`, `most_reliable`).
 - `recomendar_fornecedores(estrategia, unidade_id, limite)` — top-N de empresas
   fornecedoras (`most_proven`, `broadest_catalog`, `nearest`).
+- `listar_itens_de_fixacao(tipo, marca, limite)` — ofertas de itens de fixação (trilho,
+  grampo, suporte, gancho, kit) por preço, sem ranking por mérito (consulta direta ao Postgres).
 - `listar_profissoes()` — profissões e ids, para filtrar os profissionais.
 - `buscar_tecnicos_credenciados(profissao, cidade)` — técnicos afiliados a
   empresas e seus registros profissionais (consulta direta ao Postgres).

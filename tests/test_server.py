@@ -92,3 +92,29 @@ def test_autenticacao_por_api_key():
             "/mcp", json={}, headers={**accept, "x-api-key": settings.MCP_API_KEY}
         )
         assert chave_certa.status_code != 401
+
+
+def test_listar_itens_de_fixacao_filtra_tipo_marca_e_limite():
+    fake_cur = MagicMock()
+    fake_cur.fetchall.return_value = [{"fornecedor": "ACME", "tipo": "RAIL"}]
+
+    with patch("server.get_cursor") as mock_get_cursor:
+        mock_get_cursor.return_value.__enter__.return_value = fake_cur
+        resultado = server.listar_itens_de_fixacao(tipo="RAIL", marca="alu", limite=500)
+
+    assert resultado == [{"fornecedor": "ACME", "tipo": "RAIL"}]
+    sql, params = fake_cur.execute.call_args[0]
+    assert "product_type = 'INFRASTRUCTURE'" in sql
+    assert params == {"tipo": "RAIL", "marca": "%alu%", "limite": 20}
+
+
+def test_listar_itens_de_fixacao_sem_filtros_nao_restringe():
+    fake_cur = MagicMock()
+    fake_cur.fetchall.return_value = []
+
+    with patch("server.get_cursor") as mock_get_cursor:
+        mock_get_cursor.return_value.__enter__.return_value = fake_cur
+        server.listar_itens_de_fixacao()
+
+    params = fake_cur.execute.call_args[0][1]
+    assert params == {"tipo": "", "marca": "", "limite": 10}

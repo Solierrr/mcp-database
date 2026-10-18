@@ -9,8 +9,9 @@ O `api-mcp` segue uma arquitetura enxuta de três camadas dentro de um único pr
 </p>
 
 - **Arquitetura seguida**, servidor MCP single-process sobre Starlette/Uvicorn, com ferramentas registradas via decorator (`@mcp.tool()`) em vez de rotas HTTP tradicionais — o transporte é o protocolo MCP (`streamable_http_app`), não REST.
-- **Ferramentas MCP expostas** (`server.py`), cinco ferramentas registradas via `@mcp.tool()`:
+- **Ferramentas MCP expostas** (`server.py`), seis ferramentas registradas via `@mcp.tool()`:
   - `recomendar_ofertas`, `recomendar_profissionais` e `recomendar_fornecedores`, que não calculam ranking: chamam os feeds da `api-recommendation` por `recommendation_client.py` (HTTP, chave `X-Recommendation-Key`) e devolvem `fonte`, `avisos` e `itens` com métrica e motivos; falhas viram `{"erro": ...}`.
+  - `listar_itens_de_fixacao`, lê as ofertas com `product_type = INFRASTRUCTURE` do Postgres e devolve da mais barata para a mais cara; a `api-recommendation` ainda não ranqueia esses itens.
   - `listar_profissoes()`, lê `profession` do Postgres e devolve id e nome, para filtrar `recomendar_profissionais`.
   - `buscar_tecnicos_credenciados(profissao: str = "", cidade: str = "")`, consulta técnicos credenciados afiliados a empresas técnicas, retornando nome, empresa afiliada, tipo de afiliação, profissão, conselho e registro profissional, filtrando por profissão e/ou cidade da empresa afiliada.
 - **Camada de acesso ao Postgres** (`postgres_client.py`), um `psycopg2.pool.ThreadedConnectionPool` (1 a 10 conexões) instanciado sob demanda (lazy, em `_get_pool()`) e reaproveitado entre chamadas; o context manager `get_cursor()` entrega um cursor `RealDictCursor` (linhas como `dict`), faz `commit()` em caso de sucesso e `rollback()` em caso de exceção, sempre devolvendo a conexão ao pool no `finally`.
