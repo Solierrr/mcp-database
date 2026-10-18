@@ -106,6 +106,51 @@ def listar_profissoes() -> list[dict]:
 
 
 @mcp.tool()
+def listar_itens_de_fixacao(
+    tipo: Literal["", "RAIL", "CLAMP", "BRACKET", "HOOK", "KIT", "OTHER"] = "",
+    marca: str = "",
+    limite: int = 10,
+) -> list[dict]:
+    """Lista ofertas de itens de fixação e infraestrutura (trilho, grampo, suporte,
+    gancho, kit), da mais barata para a mais cara. Não há ranking por mérito para esses
+    itens: a ordem é só o preço. Filtra por tipo e/ou marca, se informado."""
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                comp.trade_name AS fornecedor,
+                b.name AS marca,
+                m.model AS modelo,
+                m.infrastructure_type AS tipo,
+                o.unit_price AS preco_unitario,
+                o.availability AS disponibilidade,
+                o.expiration_date AS validade
+            FROM offer o
+            JOIN supplier s ON s.id = o.fk_supplier
+            JOIN company comp ON comp.id = s.fk_company
+            JOIN model m ON m.id = o.fk_model
+            JOIN brand b ON b.id = m.fk_brand
+            WHERE m.product_type = 'INFRASTRUCTURE'
+              AND s.status = 'ACTIVE'
+              AND m.status = 'APPROVED'
+              AND o.commercial_status = 'ACTIVE'
+              AND o.availability > 0
+              AND (o.expiration_date IS NULL OR o.expiration_date > now())
+              AND (%(tipo)s = '' OR m.infrastructure_type = %(tipo)s)
+              AND (%(marca)s = '' OR b.name ILIKE %(marca)s)
+            ORDER BY o.unit_price ASC, o.id
+            LIMIT %(limite)s;
+            """,
+            {
+                "tipo": tipo,
+                "marca": f"%{marca}%" if marca else "",
+                "limite": _limitar(limite),
+            },
+        )
+        return cur.fetchall()
+
+
+@mcp.tool()
 def buscar_tecnicos_credenciados(profissao: str = "", cidade: str = "") -> list[dict]:
     """Busca técnicos credenciados (afiliados a alguma empresa técnica),
     com sua profissão e registro. Filtra por nome da profissão e/ou
