@@ -17,10 +17,24 @@ depender de endpoints REST customizados. O acesso ao PostgreSQL é isolado em
 
 Ferramentas disponíveis:
 
-- `listar_ofertas_de_placas(potencia_minima_wp, marca)` — ofertas ativas com
-  preço e fornecedor.
+- `recomendar_ofertas(estrategia, unidade_id, limite)` — top-N de ofertas de
+  placas ranqueado pela `api-recommendation` (`best_value`, `most_efficient`,
+  `nearest_available`, `most_proven`).
+- `recomendar_profissionais(estrategia, profissao_id, limite)` — top-N de
+  profissionais (`best_match`, `top_rated`, `most_qualified`,
+  `most_experienced`, `most_reliable`).
+- `recomendar_fornecedores(estrategia, unidade_id, limite)` — top-N de empresas
+  fornecedoras (`most_proven`, `broadest_catalog`, `nearest`).
+- `listar_itens_de_fixacao(tipo, marca, limite)` — ofertas de itens de fixação (trilho,
+  grampo, suporte, gancho, kit) por preço, sem ranking por mérito (consulta direta ao Postgres).
+- `listar_profissoes()` — profissões e ids, para filtrar os profissionais.
 - `buscar_tecnicos_credenciados(profissao, cidade)` — técnicos afiliados a
-  empresas e seus registros profissionais.
+  empresas e seus registros profissionais (consulta direta ao Postgres).
+
+As ferramentas `recomendar_*` não calculam ranking: chamam os feeds da
+`api-recommendation` (`RECOMMENDATION_API_URL`, `RECOMMENDATION_API_KEY`) e
+devolvem `fonte`, `avisos` e `itens` com a métrica e os motivos de cada
+posição. Se o serviço falhar, devolvem `{"erro": ...}` para o agente explicar.
 
 ## Rodando localmente
 
