@@ -1,4 +1,4 @@
-"""Servidor MCP que expõe o Postgres 'Negócio'."""
+"""Servidor MCP que expõe o catálogo de negócio da Solaria."""
 
 from typing import Literal
 
@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from postgres_client import get_cursor
+from core_client import buscar_catalogo
 from recommendation_client import buscar_feed
 from settings import settings
 
@@ -95,95 +95,37 @@ async def recomendar_fornecedores(
 
 
 @mcp.tool()
-def listar_profissoes() -> list[dict]:
+async def listar_profissoes() -> list[dict] | dict:
     """Lista as profissões cadastradas, com o id usado para filtrar
     recomendar_profissionais."""
-    with get_cursor() as cur:
-        cur.execute(
-            "SELECT id::text AS id, name AS nome FROM profession ORDER BY name;"
-        )
-        return cur.fetchall()
+    return await buscar_catalogo("professions", {})
 
 
 @mcp.tool()
-def listar_itens_de_fixacao(
+async def listar_itens_de_fixacao(
     tipo: Literal["", "RAIL", "CLAMP", "BRACKET", "HOOK", "KIT", "OTHER"] = "",
     marca: str = "",
     limite: int = 10,
-) -> list[dict]:
+) -> list[dict] | dict:
     """Lista ofertas de itens de fixação e infraestrutura (trilho, grampo, suporte,
     gancho, kit), da mais barata para a mais cara. Não há ranking por mérito para esses
     itens: a ordem é só o preço. Filtra por tipo e/ou marca, se informado."""
-    with get_cursor() as cur:
-        cur.execute(
-            """
-            SELECT
-                comp.trade_name AS fornecedor,
-                b.name AS marca,
-                m.model AS modelo,
-                m.infrastructure_type AS tipo,
-                o.unit_price AS preco_unitario,
-                o.availability AS disponibilidade,
-                o.expiration_date AS validade
-            FROM offer o
-            JOIN supplier s ON s.id = o.fk_supplier
-            JOIN company comp ON comp.id = s.fk_company
-            JOIN model m ON m.id = o.fk_model
-            JOIN brand b ON b.id = m.fk_brand
-            WHERE m.product_type = 'INFRASTRUCTURE'
-              AND s.status = 'ACTIVE'
-              AND m.status = 'APPROVED'
-              AND o.commercial_status = 'ACTIVE'
-              AND o.availability > 0
-              AND (o.expiration_date IS NULL OR o.expiration_date > now())
-              AND (%(tipo)s = '' OR m.infrastructure_type = %(tipo)s)
-              AND (%(marca)s = '' OR b.name ILIKE %(marca)s)
-            ORDER BY o.unit_price ASC, o.id
-            LIMIT %(limite)s;
-            """,
-            {
-                "tipo": tipo,
-                "marca": f"%{marca}%" if marca else "",
-                "limite": _limitar(limite),
-            },
-        )
-        return cur.fetchall()
+    return await buscar_catalogo(
+        "infrastructure-offers",
+        {"infrastructureType": tipo, "brand": marca, "limit": _limitar(limite)},
+    )
 
 
 @mcp.tool()
-def buscar_tecnicos_credenciados(profissao: str = "", cidade: str = "") -> list[dict]:
+async def buscar_tecnicos_credenciados(
+    profissao: str = "", cidade: str = ""
+) -> list[dict] | dict:
     """Busca técnicos credenciados (afiliados a alguma empresa técnica),
     com sua profissão e registro. Filtra por nome da profissão e/ou
     cidade da empresa à qual está afiliado, se informado."""
-    with get_cursor() as cur:
-        cur.execute(
-            """
-            SELECT
-                p.name AS nome_tecnico,
-                comp.trade_name AS empresa_afiliada,
-                ta.affiliation_type AS tipo_afiliacao,
-                prof.name AS profissao,
-                pr.council AS conselho,
-                pr.number AS numero_registro,
-                pr.expiration_date AS validade_registro,
-                addr.city AS cidade
-            FROM technician t
-            JOIN person p ON p.id = t.fk_person
-            JOIN technician_affiliation ta ON ta.fk_technician = t.id
-            JOIN company comp ON comp.id = ta.fk_company
-            JOIN address addr ON addr.id = comp.fk_address
-            LEFT JOIN professional_registration pr ON pr.fk_technician = t.id
-            LEFT JOIN profession prof ON prof.id = pr.fk_profession
-            WHERE (%(profissao)s = '' OR prof.name ILIKE %(profissao)s)
-              AND (%(cidade)s = '' OR addr.city ILIKE %(cidade)s)
-            ORDER BY p.name;
-            """,
-            {
-                "profissao": f"%{profissao}%" if profissao else "",
-                "cidade": f"%{cidade}%" if cidade else "",
-            },
-        )
-        return cur.fetchall()
+    return await buscar_catalogo(
+        "accredited-technicians", {"profession": profissao, "city": cidade}
+    )
 
 
 class ExigirAPIKey(BaseHTTPMiddleware):
