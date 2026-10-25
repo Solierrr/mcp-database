@@ -15,13 +15,16 @@ class Settings(BaseSettings):
     MCP_API_KEY: str | None = None
     SERVICE_KEY_AI_ASSISTANT: str | None = None
     SERVICE_KEY_AI_OPERATIONAL: str | None = None
+    SERVICE_KEY: str | None = None
     RECOMMENDATION_API_URL: str = "http://localhost:8000"
     RECOMMENDATION_API_KEY: str | None = None
     PORT: int = 8001
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    @field_validator("SERVICE_KEY_AI_ASSISTANT", "SERVICE_KEY_AI_OPERATIONAL")
+    @field_validator(
+        "SERVICE_KEY_AI_ASSISTANT", "SERVICE_KEY_AI_OPERATIONAL", "SERVICE_KEY"
+    )
     @classmethod
     def _chave_longa(cls, valor: str | None) -> str | None:
         if valor and len(valor) < _TAMANHO_MINIMO_DA_CHAVE:
