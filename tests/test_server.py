@@ -1,9 +1,11 @@
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 from starlette.testclient import TestClient
 
+import core_client
 import server
 from settings import settings
 
@@ -48,29 +50,44 @@ def test_limite_fica_entre_1_e_o_maximo(pedido, esperado):
     assert server._limitar(pedido) == esperado
 
 
-def test_listar_profissoes_consulta_a_tabela():
-    fake_cur = MagicMock()
-    fake_cur.fetchall.return_value = [{"id": "p-1", "nome": "Engenheiro"}]
-
-    with patch("server.get_cursor") as mock_get_cursor:
-        mock_get_cursor.return_value.__enter__.return_value = fake_cur
-        resultado = server.listar_profissoes()
+def test_listar_profissoes_consulta_o_catalogo():
+    with patch("server.buscar_catalogo", new_callable=AsyncMock) as catalogo:
+        catalogo.return_value = [{"id": "p-1", "nome": "Engenheiro"}]
+        resultado = asyncio.run(server.listar_profissoes())
 
     assert resultado == [{"id": "p-1", "nome": "Engenheiro"}]
-    assert "FROM profession" in fake_cur.execute.call_args[0][0]
+    catalogo.assert_awaited_once_with("professions", {})
 
 
-def test_buscar_tecnicos_credenciados_filtra_por_profissao():
-    fake_cur = MagicMock()
-    fake_cur.fetchall.return_value = [{"nome_tecnico": "João Silva"}]
+def test_listar_profissoes_repassa_o_erro_do_catalogo():
+    with patch("server.buscar_catalogo", new_callable=AsyncMock) as catalogo:
+        catalogo.return_value = {"erro": "indisponível"}
+        resultado = asyncio.run(server.listar_profissoes())
 
-    with patch("server.get_cursor") as mock_get_cursor:
-        mock_get_cursor.return_value.__enter__.return_value = fake_cur
-        resultado = server.buscar_tecnicos_credenciados(profissao="eletric")
+    assert resultado == {"erro": "indisponível"}
+
+
+def test_buscar_tecnicos_credenciados_filtra_por_profissao_e_cidade():
+    with patch("server.buscar_catalogo", new_callable=AsyncMock) as catalogo:
+        catalogo.return_value = [{"nome_tecnico": "João Silva"}]
+        resultado = asyncio.run(
+            server.buscar_tecnicos_credenciados(profissao="eletric", cidade="Campinas")
+        )
 
     assert resultado == [{"nome_tecnico": "João Silva"}]
-    params = fake_cur.execute.call_args[0][1]
-    assert params["profissao"] == "%eletric%"
+    catalogo.assert_awaited_once_with(
+        "accredited-technicians", {"profession": "eletric", "city": "Campinas"}
+    )
+
+
+def test_buscar_tecnicos_credenciados_sem_filtros():
+    with patch("server.buscar_catalogo", new_callable=AsyncMock) as catalogo:
+        catalogo.return_value = []
+        asyncio.run(server.buscar_tecnicos_credenciados())
+
+    catalogo.assert_awaited_once_with(
+        "accredited-technicians", {"profession": "", "city": ""}
+    )
 
 
 def test_autenticacao_por_api_key():
@@ -95,26 +112,40 @@ def test_autenticacao_por_api_key():
 
 
 def test_listar_itens_de_fixacao_filtra_tipo_marca_e_limite():
-    fake_cur = MagicMock()
-    fake_cur.fetchall.return_value = [{"fornecedor": "ACME", "tipo": "RAIL"}]
-
-    with patch("server.get_cursor") as mock_get_cursor:
-        mock_get_cursor.return_value.__enter__.return_value = fake_cur
-        resultado = server.listar_itens_de_fixacao(tipo="RAIL", marca="alu", limite=500)
+    with patch("server.buscar_catalogo", new_callable=AsyncMock) as catalogo:
+        catalogo.return_value = [{"fornecedor": "ACME", "tipo": "RAIL"}]
+        resultado = asyncio.run(
+            server.listar_itens_de_fixacao(tipo="RAIL", marca="alu", limite=500)
+        )
 
     assert resultado == [{"fornecedor": "ACME", "tipo": "RAIL"}]
-    sql, params = fake_cur.execute.call_args[0]
-    assert "product_type = 'INFRASTRUCTURE'" in sql
-    assert params == {"tipo": "RAIL", "marca": "%alu%", "limite": 20}
+    catalogo.assert_awaited_once_with(
+        "infrastructure-offers",
+        {"infrastructureType": "RAIL", "brand": "alu", "limit": 20},
+    )
 
 
 def test_listar_itens_de_fixacao_sem_filtros_nao_restringe():
-    fake_cur = MagicMock()
-    fake_cur.fetchall.return_value = []
+    with patch("server.buscar_catalogo", new_callable=AsyncMock) as catalogo:
+        catalogo.return_value = []
+        asyncio.run(server.listar_itens_de_fixacao())
 
-    with patch("server.get_cursor") as mock_get_cursor:
-        mock_get_cursor.return_value.__enter__.return_value = fake_cur
-        server.listar_itens_de_fixacao()
+    catalogo.assert_awaited_once_with(
+        "infrastructure-offers",
+        {"infrastructureType": "", "brand": "", "limit": 10},
+    )
 
-    params = fake_cur.execute.call_args[0][1]
-    assert params == {"tipo": "", "marca": "", "limite": 10}
+
+def test_ferramentas_de_catalogo_chamam_o_core_pelo_cliente_http():
+    chamadas = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        chamadas.append(request)
+        return httpx.Response(200, json=[{"id": "p-1", "name": "Eletricista"}])
+
+    with patch.object(core_client, "_transport", httpx.MockTransport(handler)):
+        resultado = asyncio.run(server.listar_profissoes())
+
+    assert resultado == [{"id": "p-1", "nome": "Eletricista"}]
+    assert chamadas[0].url.path == "/internal/catalog/professions"
+    assert chamadas[0].headers["X-Service-Key"] == settings.SERVICE_KEY_CORE
