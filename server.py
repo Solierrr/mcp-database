@@ -1,8 +1,10 @@
 """Servidor MCP que expõe o Postgres 'Negócio'."""
 
 import asyncio
+import hmac
 import logging
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import Literal
 
 import psycopg2
@@ -22,6 +24,7 @@ from version import VERSION
 _LIMITE_MAXIMO = 20
 _TIMEOUT_DO_PRONTO_SEGUNDOS = 2
 _ROTAS_PUBLICAS = {"/health", "/ready"}
+_CHAMADORES_DO_MCP = ("ai-assistant", "ai-operational")
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -213,19 +216,61 @@ async def ready(request: Request) -> JSONResponse:
     return JSONResponse({"status": "UP"})
 
 
-class ExigirAPIKey(BaseHTTPMiddleware):
+def _problema(request: Request, status: int, codigo: str, detalhe: str) -> JSONResponse:
+    corpo = {
+        "type": "about:blank",
+        "title": codigo,
+        "status": status,
+        "errorCode": codigo,
+        "detail": detalhe,
+        "instance": request.url.path,
+        "timestamp": datetime.now(UTC).isoformat(),
+    }
+    return JSONResponse(
+        corpo, status_code=status, media_type="application/problem+json"
+    )
+
+
+def _chamador(chave: str) -> str | None:
+    for chamador, esperada in settings.service_keys.items():
+        if hmac.compare_digest(chave.encode(), esperada.encode()):
+            return chamador
+    return None
+
+
+def _chave_antiga_valida(chave: str | None) -> bool:
+    return bool(
+        chave
+        and settings.MCP_API_KEY
+        and hmac.compare_digest(chave.encode(), settings.MCP_API_KEY.encode())
+    )
+
+
+class ExigirChaveDeServico(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.url.path in _ROTAS_PUBLICAS:
             return await call_next(request)
-        if request.headers.get("x-api-key") != settings.MCP_API_KEY:
-            return JSONResponse(
-                {"erro": "API key ausente ou inválida"}, status_code=401
-            )
-        return await call_next(request)
+        chave = request.headers.get("x-service-key")
+        if chave:
+            chamador = _chamador(chave)
+            if chamador in _CHAMADORES_DO_MCP:
+                return await call_next(request)
+            if chamador:
+                return _problema(
+                    request,
+                    403,
+                    "FORBIDDEN",
+                    "Serviço chamador não autorizado nesta rota.",
+                )
+        elif _chave_antiga_valida(request.headers.get("x-api-key")):
+            return await call_next(request)
+        return _problema(
+            request, 401, "UNAUTHENTICATED", "Chave de serviço ausente ou inválida."
+        )
 
 
 app = mcp.streamable_http_app()
-app.add_middleware(ExigirAPIKey)
+app.add_middleware(ExigirChaveDeServico)
 _executar_sessoes = app.router.lifespan_context
 
 

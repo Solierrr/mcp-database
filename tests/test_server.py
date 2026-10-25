@@ -73,25 +73,101 @@ def test_buscar_tecnicos_credenciados_filtra_por_profissao():
     assert params["profissao"] == "%eletric%"
 
 
-def test_autenticacao_por_api_key():
-    """Os 3 casos num teste só: StreamableHTTPSessionManager.run() só pode
+ACCEPT = {"Accept": "application/json, text/event-stream"}
+
+
+def test_chaves_aceitas_chegam_ao_mcp():
+    """Os casos aceitos num teste só: StreamableHTTPSessionManager.run() só pode
     ser chamado uma vez por instância — TestClient(server.app) separado em
     cada teste quebraria a partir do segundo."""
-    accept = {"Accept": "application/json, text/event-stream"}
-
     with TestClient(server.app) as client:
-        sem_chave = client.post("/mcp", json={}, headers=accept)
-        assert sem_chave.status_code == 401
+        for cabecalho in (
+            {"X-Service-Key": settings.SERVICE_KEY_AI_ASSISTANT},
+            {"X-Service-Key": settings.SERVICE_KEY_AI_OPERATIONAL},
+            {"x-api-key": settings.MCP_API_KEY},
+        ):
+            resposta = client.post("/mcp", json={}, headers={**ACCEPT, **cabecalho})
+            assert resposta.status_code not in (401, 403)
 
-        chave_errada = client.post(
-            "/mcp", json={}, headers={**accept, "x-api-key": "errada"}
-        )
-        assert chave_errada.status_code == 401
 
-        chave_certa = client.post(
-            "/mcp", json={}, headers={**accept, "x-api-key": settings.MCP_API_KEY}
-        )
-        assert chave_certa.status_code != 401
+@pytest.mark.parametrize(
+    "cabecalho",
+    [
+        {},
+        {"X-Service-Key": "chave-errada-com-mais-de-32-caracteres"},
+        {"x-api-key": "errada"},
+        {"X-Service-Key": "chave-errada-com-mais-de-32-caracteres", "x-api-key": ""},
+    ],
+)
+def test_chave_ausente_ou_invalida_responde_401_em_problem_detail(cabecalho):
+    resposta = TestClient(server.app).post(
+        "/mcp", json={}, headers={**ACCEPT, **cabecalho}
+    )
+
+    assert resposta.status_code == 401
+    assert resposta.headers["content-type"] == "application/problem+json"
+    corpo = resposta.json()
+    assert corpo["errorCode"] == "UNAUTHENTICATED"
+    assert corpo["status"] == 401
+    assert corpo["instance"] == "/mcp"
+
+
+def test_chave_invalida_nao_cai_para_a_chave_antiga():
+    resposta = TestClient(server.app).post(
+        "/mcp",
+        json={},
+        headers={
+            **ACCEPT,
+            "X-Service-Key": "chave-errada-com-mais-de-32-caracteres",
+            "x-api-key": settings.MCP_API_KEY,
+        },
+    )
+
+    assert resposta.status_code == 401
+
+
+def test_sem_chave_antiga_configurada_x_api_key_e_recusada(monkeypatch):
+    monkeypatch.setattr(settings, "MCP_API_KEY", None)
+
+    resposta = TestClient(server.app).post(
+        "/mcp", json={}, headers={**ACCEPT, "x-api-key": ""}
+    )
+
+    assert resposta.status_code == 401
+
+
+def test_destino_sem_chaves_configuradas_recusa_tudo(monkeypatch):
+    monkeypatch.setattr(settings, "MCP_API_KEY", None)
+    monkeypatch.setattr(settings, "SERVICE_KEY_AI_ASSISTANT", None)
+    monkeypatch.setattr(settings, "SERVICE_KEY_AI_OPERATIONAL", None)
+
+    resposta = TestClient(server.app).post(
+        "/mcp", json={}, headers={**ACCEPT, "X-Service-Key": ""}
+    )
+
+    assert resposta.status_code == 401
+
+
+def test_chamador_valido_fora_da_rota_responde_403(monkeypatch):
+    monkeypatch.setattr(server, "_CHAMADORES_DO_MCP", ("ai-assistant",))
+
+    resposta = TestClient(server.app).post(
+        "/mcp",
+        json={},
+        headers={**ACCEPT, "X-Service-Key": settings.SERVICE_KEY_AI_OPERATIONAL},
+    )
+
+    assert resposta.status_code == 403
+    assert resposta.json()["errorCode"] == "FORBIDDEN"
+
+
+def test_chave_de_servico_curta_impede_a_partida():
+    from pydantic import ValidationError
+
+    from settings import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(SERVICE_KEY_AI_ASSISTANT="curta")
 
 
 def test_listar_itens_de_fixacao_filtra_tipo_marca_e_limite():
