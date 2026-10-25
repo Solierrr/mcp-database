@@ -1,7 +1,8 @@
 # api-mcp
 
 Servidor MCP que expõe consultas ao Postgres de negócio da Solaria para o
-`ai-assistant`, por meio do Model Context Protocol autenticado por API key.
+`ai-assistant` e o `ai-operational`, por meio do Model Context Protocol autenticado
+por chave de serviço (`X-Service-Key`).
 Este repositório é somente de leitura e não é dono do schema; a fonte do
 schema é o `database-console` (`db/core/schema.sql` e as migrations em `db/core/migrations`).
 O acesso ao banco deve usar o usuário somente leitura `solaria_ro_mcp` (contrato em
@@ -15,7 +16,10 @@ O acesso ao banco deve usar o usuário somente leitura `solaria_ro_mcp` (contrat
 O SDK `mcp`, servido por Starlette/Uvicorn, descobre funções Python decoradas
 com `@mcp.tool()`. Assim, agentes consultam capacidades conhecidas em vez de
 depender de endpoints REST customizados. O acesso ao PostgreSQL é isolado em
-`postgres_client.py` e o endpoint `/mcp` exige API key.
+`postgres_client.py` e o endpoint `/mcp` exige a chave de serviço de um dos
+agentes (`SERVICE_KEY_AI_ASSISTANT` ou `SERVICE_KEY_AI_OPERATIONAL`). Enquanto os
+agentes migram, a chave antiga `x-api-key` (`MCP_API_KEY`) continua aceita se
+estiver configurada.
 
 Ferramentas disponíveis:
 
@@ -34,18 +38,28 @@ Ferramentas disponíveis:
   empresas e seus registros profissionais (consulta direta ao Postgres).
 
 As ferramentas `recomendar_*` não calculam ranking: chamam os feeds da
-`api-recommendation` (`RECOMMENDATION_API_URL`, `RECOMMENDATION_API_KEY`) e
+`api-recommendation` (`RECOMMENDATION_API_URL`, com `X-Service-Key` lido de
+`SERVICE_KEY`) e
 devolvem `fonte`, `avisos` e `itens` com a métrica e os motivos de cada
 posição. Se o serviço falhar, devolvem `{"erro": ...}` para o agente explicar.
 
 ## Rodando localmente
 
-1. Copie `.env.example` para `.env` e preencha `DATABASE_URL` e `MCP_API_KEY`.
+1. Copie `.env.example` para `.env` e preencha o Postgres (`DB_POSTGRES_*`) e as
+   chaves de serviço, ou gere o arquivo com `make env ENV=local`.
 2. Instale dependências com `pip install -r requirements.txt`.
 3. Inicie com `python server.py`.
 
 Para usar o padrão organizacional de ambiente, prefira `make env ENV=local`
 antes do start.
+
+## Saúde e versão
+
+- `GET /health`: processo vivo, com a versão do release (`{"status":"UP","version":"X.Y.Z"}`).
+- `GET /ready`: pronto para atender; consulta o Postgres com timeout de 2 segundos e
+  responde 503 (`{"status":"DOWN"}`) se o banco não responder.
+- As duas rotas são públicas. A versão vem do `version.txt`, atualizado pelo
+  release-please, e também aparece no log de partida.
 
 ## Docker
 

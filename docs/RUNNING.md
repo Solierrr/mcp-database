@@ -1,6 +1,6 @@
 # Rodando o Projeto Localmente
 
-Este repositório é Python. O processo local é sempre o mesmo: clonar, criar um ambiente virtual, instalar as dependências do `requirements.txt` e subir a aplicação via `uvicorn`, apontando para o objeto ASGI `app` exposto em `server.py`. Antes de iniciar, verifique a seção de impedimentos abaixo — o serviço depende de uma instância do Postgres "Negócio" acessível e de uma `MCP_API_KEY` configurada, mesmo em ambiente local.
+Este repositório é Python. O processo local é sempre o mesmo: clonar, criar um ambiente virtual, instalar as dependências do `requirements.txt` e subir a aplicação via `uvicorn`, apontando para o objeto ASGI `app` exposto em `server.py`. Antes de iniciar, verifique a seção de impedimentos abaixo — o serviço depende de uma instância do Postgres "Negócio" acessível e das chaves de serviço dos agentes configuradas, mesmo em ambiente local.
 
 <p>
   <a href="https://github.com/syvixor/skills-icons">
@@ -12,7 +12,7 @@ Este repositório é Python. O processo local é sempre o mesmo: clonar, criar u
 
 - **Python 3.12+ instalado localmente** {a confirmar: versão exata, não há `Dockerfile` no repositório para conferir a base image usada em produção}.
 - **Acesso ao Postgres "Negócio"**, o serviço não sobe funcional sem uma instância Postgres alcançável em `DB_POSTGRES_HOST`/`DB_POSTGRES_PORT`, com o schema de negócio (tabelas `offer`, `supplier`, `company`, `model`, `technician`, `person`, `technician_affiliation`, `address`, `professional_registration`, `profession`) já populado — em produção essa credencial vem do [Infisical](https://infisical.com).
-- **`MCP_API_KEY` definida**, toda requisição ao endpoint `/mcp` passa pelo middleware `ExigirAPIKey` (`server.py`); sem o header `x-api-key` correto a aplicação sobe normalmente, mas todas as chamadas retornam `401`.
+- **Chaves de serviço definidas**, toda requisição ao endpoint `/mcp` passa pelo middleware `ExigirChaveDeServico` (`server.py`); sem um `X-Service-Key` igual a `SERVICE_KEY_AI_ASSISTANT` ou `SERVICE_KEY_AI_OPERATIONAL` (ou o `x-api-key` antigo, se `MCP_API_KEY` estiver configurada) a aplicação sobe normalmente, mas as chamadas retornam `401`. As chaves têm no mínimo 32 caracteres; uma chave curta impede a partida. `/health` e `/ready` não exigem chave.
 - **Secrets locais**, variáveis equivalentes às injetadas em runtime pelo Infisical precisam ser criadas manualmente em um `.env` local a partir do `.env.example` — sem elas, a aplicação falha ao iniciar (`pydantic-settings` valida os campos obrigatórios de `settings.py` na importação).
 
 ## Instalação do Projeto
@@ -41,7 +41,7 @@ code . -r
   </a>
 </p>
 
-Copie o `.env.example` para `.env` e preencha com credenciais válidas do Postgres "Negócio" e uma `MCP_API_KEY` própria (o valor não precisa ser o mesmo usado em produção, só precisa ser consistente entre quem sobe o servidor e quem chama a ferramenta MCP).
+Copie o `.env.example` para `.env` e preencha com credenciais válidas do Postgres "Negócio" e as chaves de serviço (os valores locais vêm da pasta `/service-keys` do Infisical com `make env ENV=local`; só precisam ser consistentes entre quem sobe o servidor e quem chama a ferramenta MCP).
 
 ```Comandos para configurar o ambiente
 copy .env.example .env
