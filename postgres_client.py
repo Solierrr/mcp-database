@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 
+import psycopg2
 from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 
@@ -31,3 +32,13 @@ def get_cursor():
         raise
     finally:
         _get_pool().putconn(conn)
+
+
+def ping(timeout: int) -> None:
+    """Abre uma conexão própria, fora do pool, e roda SELECT 1."""
+    conn = psycopg2.connect(settings.DATABASE_URL, connect_timeout=timeout)
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1;")
+    finally:
+        conn.close()

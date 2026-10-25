@@ -1,9 +1,11 @@
 """Servidor MCP que expõe o Postgres 'Negócio'."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import Literal
 
+import psycopg2
 import uvicorn
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -11,12 +13,15 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+import postgres_client
 from postgres_client import get_cursor
 from recommendation_client import buscar_feed
 from settings import settings
 from version import VERSION
 
 _LIMITE_MAXIMO = 20
+_TIMEOUT_DO_PRONTO_SEGUNDOS = 2
+_ROTAS_PUBLICAS = {"/health", "/ready"}
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -191,8 +196,27 @@ def buscar_tecnicos_credenciados(profissao: str = "", cidade: str = "") -> list[
         return cur.fetchall()
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health(request: Request) -> JSONResponse:
+    return JSONResponse({"status": "UP", "version": VERSION})
+
+
+@mcp.custom_route("/ready", methods=["GET"])
+async def ready(request: Request) -> JSONResponse:
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(postgres_client.ping, _TIMEOUT_DO_PRONTO_SEGUNDOS),
+            timeout=_TIMEOUT_DO_PRONTO_SEGUNDOS + 1,
+        )
+    except (psycopg2.Error, OSError, TimeoutError):
+        return JSONResponse({"status": "DOWN"}, status_code=503)
+    return JSONResponse({"status": "UP"})
+
+
 class ExigirAPIKey(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
+        if request.url.path in _ROTAS_PUBLICAS:
+            return await call_next(request)
         if request.headers.get("x-api-key") != settings.MCP_API_KEY:
             return JSONResponse(
                 {"erro": "API key ausente ou inválida"}, status_code=401

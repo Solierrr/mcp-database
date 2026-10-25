@@ -127,3 +127,37 @@ def test_versao_vem_do_version_txt():
 
     assert VERSION == Path("version.txt").read_text(encoding="utf-8").strip()
     assert VERSION
+
+
+def test_health_responde_vivo_com_a_versao_sem_chave():
+    from version import VERSION
+
+    resposta = TestClient(server.app).get("/health")
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"status": "UP", "version": VERSION}
+
+
+def test_ready_responde_up_quando_o_banco_responde():
+    with patch("server.postgres_client.ping") as ping:
+        resposta = TestClient(server.app).get("/ready")
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"status": "UP"}
+    ping.assert_called_once_with(2)
+
+
+def test_ready_responde_down_sem_detalhes_quando_o_banco_falha():
+    with patch("server.postgres_client.ping", side_effect=OSError("sem banco")):
+        resposta = TestClient(server.app).get("/ready")
+
+    assert resposta.status_code == 503
+    assert resposta.json() == {"status": "DOWN"}
+
+
+def test_ready_responde_down_quando_o_banco_nao_responde_a_tempo():
+    with patch("server.postgres_client.ping", side_effect=TimeoutError):
+        resposta = TestClient(server.app).get("/ready")
+
+    assert resposta.status_code == 503
+    assert resposta.json() == {"status": "DOWN"}

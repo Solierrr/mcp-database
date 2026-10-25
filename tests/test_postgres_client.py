@@ -32,3 +32,16 @@ def test_get_cursor_faz_rollback_e_devolve_conexao_em_erro(monkeypatch):
 
     fake_conn.rollback.assert_called_once()
     fake_pool.putconn.assert_called_once_with(fake_conn)
+
+
+def test_ping_usa_conexao_propria_com_timeout_e_fecha(monkeypatch):
+    fake_conn = MagicMock()
+    connect = MagicMock(return_value=fake_conn)
+    monkeypatch.setattr(postgres_client.psycopg2, "connect", connect)
+
+    postgres_client.ping(2)
+
+    assert connect.call_args.kwargs == {"connect_timeout": 2}
+    cursor = fake_conn.cursor.return_value.__enter__.return_value
+    cursor.execute.assert_called_once_with("SELECT 1;")
+    fake_conn.close.assert_called_once()
