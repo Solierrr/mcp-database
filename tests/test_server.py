@@ -118,3 +118,12 @@ def test_listar_itens_de_fixacao_sem_filtros_nao_restringe():
 
     params = fake_cur.execute.call_args[0][1]
     assert params == {"tipo": "", "marca": "", "limite": 10}
+
+
+def test_versao_vem_do_version_txt():
+    from pathlib import Path
+
+    from version import VERSION
+
+    assert VERSION == Path("version.txt").read_text(encoding="utf-8").strip()
+    assert VERSION

@@ -1,5 +1,7 @@
 """Servidor MCP que expõe o Postgres 'Negócio'."""
 
+import logging
+from contextlib import asynccontextmanager
 from typing import Literal
 
 import uvicorn
@@ -12,8 +14,11 @@ from starlette.responses import JSONResponse
 from postgres_client import get_cursor
 from recommendation_client import buscar_feed
 from settings import settings
+from version import VERSION
 
 _LIMITE_MAXIMO = 20
+
+logger = logging.getLogger("uvicorn.error")
 
 mcp = FastMCP(
     "solaria-negocio",
@@ -197,6 +202,17 @@ class ExigirAPIKey(BaseHTTPMiddleware):
 
 app = mcp.streamable_http_app()
 app.add_middleware(ExigirAPIKey)
+_executar_sessoes = app.router.lifespan_context
+
+
+@asynccontextmanager
+async def _ciclo_de_vida(app):
+    logger.info("mcp-database %s iniciado", VERSION)
+    async with _executar_sessoes(app):
+        yield
+
+
+app.router.lifespan_context = _ciclo_de_vida
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=settings.PORT)

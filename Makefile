@@ -11,7 +11,7 @@ PY ?= .venv/bin/python
 endif
 INSTALL_CMD   ?= python -m venv .venv && $(PY) -m pip install -r requirements.txt ruff
 DEV_CMD       ?= $(PY) server.py
-BUILD_CMD     ?= $(PY) -m compileall -q server.py postgres_client.py settings.py recommendation_client.py tests
+BUILD_CMD     ?= $(PY) -m compileall -q server.py postgres_client.py settings.py recommendation_client.py version.py tests
 TEST_CMD      ?= $(PY) -m pytest tests
 LINT_CMD      ?= $(PY) -m ruff check . && $(PY) -m ruff format --check .
 FORMAT_CMD    ?= $(PY) -m ruff format .
