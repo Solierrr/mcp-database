@@ -1,0 +1,7 @@
+{
+  "service": "mcp-database",
+  "aliases": [
+    "mcp-database"
+  ],
+  "project": "DB"
+}
