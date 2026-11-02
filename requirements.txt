@@ -1,5 +1,4 @@
 mcp==1.29.1
-psycopg2-binary
 pydantic-settings
 uvicorn
 starlette
