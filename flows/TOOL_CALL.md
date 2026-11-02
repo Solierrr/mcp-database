@@ -10,10 +10,10 @@ O agente descobre o catálogo e executa uma ferramenta de leitura. O [fluxo de r
 sequenceDiagram
  participant A as Agente
  participant M as Servidor MCP
- participant D as PostgreSQL ou motor de feeds
+ participant D as api-core ou motor de feeds
  A->>M: MCP com X-Service-Key
  M->>M: Valida chamador e argumentos
- M->>D: SQL parametrizado ou HTTP autenticado
+ M->>D: HTTP autenticado
  alt Fonte responde
  D-->>M: Dados
  M-->>A: Resultado e avisos
@@ -23,4 +23,4 @@ sequenceDiagram
  end
 ```
 
-Uma chave inválida impede a chamada, e problemas de schema ou de conexão afetam as consultas diretas. Quando não houver ranking, o agente não deve substituí-lo por ofertas inventadas.
+Uma chave inválida impede a chamada, e a indisponibilidade do `api-core` afeta as ferramentas de catálogo. Quando não houver ranking, o agente não deve substituí-lo por ofertas inventadas.
