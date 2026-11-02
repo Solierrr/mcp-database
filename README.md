@@ -4,6 +4,7 @@
 
 <p align="center">
   <img src="./assets/readme/stacks/python.png" width="100" hspace="8" alt="Python" title="Python">
+  <img src="./assets/readme/stacks/postgresql.png" width="100" hspace="8" alt="PostgreSQL" title="PostgreSQL">
 </p>
 
 # Ferramentas de consulta dos agentes
@@ -15,7 +16,7 @@
 
 Este serviço oferece aos assistentes ferramentas de consulta sobre ofertas, fornecedores, profissões e técnicos. Ele apresenta capacidades conhecidas para que o atendimento consulte os dados disponíveis e explique os resultados sem formular consultas livres. O serviço também recebe recomendações já ordenadas e preserva seus motivos e métricas.
 
-O acesso usa um protocolo de ferramentas autenticado entre serviços. Parte das ferramentas consulta o catálogo pelos endpoints internos do `api-core`, e outra parte chama o motor de recomendações. O servidor não acessa banco de dados. O servidor transforma os resultados para o formato usado pelos assistentes. Ele não é dono do cadastro e não altera os dados de negócio.
+O acesso usa um protocolo de ferramentas autenticado entre serviços. Parte das ferramentas consulta o PostgreSQL de negócio, e outra parte chama o motor de recomendações. O servidor transforma os resultados para o formato usado pelos assistentes. Ele não é dono do cadastro e não altera os dados de negócio.
 
 ## Aprofunde-se no Projeto!
 
@@ -26,7 +27,6 @@ O acesso usa um protocolo de ferramentas autenticado entre serviços. Parte das 
 - [DEPLOY.md](./docs/DEPLOY.md), ambientes e publicação.
 - [STATUS.md](./docs/STATUS.md), limites observados.
 - [Fluxos](./flows/), etapas e casos de erro do repositório.
-- [PENDENCIAS.md](./PENDENCIAS.md), questões para revisão.
 
 ## Contribuindo
 
