@@ -1,77 +1,35 @@
-# api-mcp
+<p align="center">
+  <img src="./assets/readme/banners/mcp.png" alt="MCP" width="100%">
+</p>
 
-Servidor MCP que expõe consultas de catálogo da Solaria para o `ai-assistant`,
-por meio do Model Context Protocol autenticado por API key. Este repositório é
-somente de leitura e não acessa banco de dados: as consultas passam pelos
-endpoints internos `GET /internal/catalog/**` do `api-core`, autenticados por
-`X-Service-Key`.
+<p align="center">
+  <img src="./assets/readme/stacks/python.png" width="100" hspace="8" alt="Python" title="Python">
+</p>
 
-[![License](https://img.shields.io/github/license/Solierrr/api-mcp)](https://github.com/Solierrr/api-mcp/blob/main/LICENSE)
-[![Release](https://img.shields.io/github/v/release/Solierrr/api-mcp)](https://github.com/Solierrr/api-mcp/releases)
+# Ferramentas de consulta dos agentes
 
-## O que ele entrega
+[![License](https://img.shields.io/github/license/Solierrr/mcp-database)](https://github.com/Solierrr/mcp-database/blob/main/LICENSE)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/Solierrr/mcp-database)](https://github.com/Solierrr/mcp-database/commits)
+[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/Solierrr/mcp-database)](https://github.com/Solierrr/mcp-database/pulls)
+[![Release](https://img.shields.io/github/v/release/Solierrr/mcp-database)](https://github.com/Solierrr/mcp-database/releases)
 
-O SDK `mcp`, servido por Starlette/Uvicorn, descobre funções Python decoradas
-com `@mcp.tool()`. Assim, agentes consultam capacidades conhecidas em vez de
-depender de endpoints REST customizados. O acesso ao `api-core` é isolado em
-`core_client.py` e o endpoint `/mcp` exige API key.
+Este serviço oferece aos assistentes ferramentas de consulta sobre ofertas, fornecedores, profissões e técnicos. Ele apresenta capacidades conhecidas para que o atendimento consulte os dados disponíveis e explique os resultados sem formular consultas livres. O serviço também recebe recomendações já ordenadas e preserva seus motivos e métricas.
 
-Ferramentas disponíveis:
+O acesso usa um protocolo de ferramentas autenticado entre serviços. Parte das ferramentas consulta o catálogo pelos endpoints internos do `api-core`, e outra parte chama o motor de recomendações. O servidor não acessa banco de dados. O servidor transforma os resultados para o formato usado pelos assistentes. Ele não é dono do cadastro e não altera os dados de negócio.
 
-- `recomendar_ofertas(estrategia, unidade_id, limite)` — top-N de ofertas de
-  placas ranqueado pela `api-recommendation` (`best_value`, `most_efficient`,
-  `nearest_available`, `most_proven`).
-- `recomendar_profissionais(estrategia, profissao_id, limite)` — top-N de
-  profissionais (`best_match`, `top_rated`, `most_qualified`,
-  `most_experienced`, `most_reliable`).
-- `recomendar_fornecedores(estrategia, unidade_id, limite)` — top-N de empresas
-  fornecedoras (`most_proven`, `broadest_catalog`, `nearest`).
-- `listar_itens_de_fixacao(tipo, marca, limite)` — ofertas de itens de fixação (trilho,
-  grampo, suporte, gancho, kit) por preço, sem ranking por mérito (`GET /internal/catalog/infrastructure-offers`).
-- `listar_profissoes()` — profissões e ids, para filtrar os profissionais
-  (`GET /internal/catalog/professions`).
-- `buscar_tecnicos_credenciados(profissao, cidade)` — técnicos afiliados a
-  empresas e seus registros profissionais (`GET /internal/catalog/accredited-technicians`).
+## Aprofunde-se no Projeto!
 
-As ferramentas `recomendar_*` não calculam ranking: chamam os feeds da
-`api-recommendation` (`RECOMMENDATION_API_URL`, `RECOMMENDATION_API_KEY`) e
-devolvem `fonte`, `avisos` e `itens` com a métrica e os motivos de cada
-posição. Se o serviço falhar, devolvem `{"erro": ...}` para o agente explicar.
+- [OVERVIEW.md](./docs/OVERVIEW.md), finalidade e regras de produto.
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md), componentes, dados e integrações.
+- [RUNNING.md](./docs/RUNNING.md), preparação e execução local.
+- [API.md](./docs/API.md), autenticação e uso do contrato.
+- [DEPLOY.md](./docs/DEPLOY.md), ambientes e publicação.
+- [STATUS.md](./docs/STATUS.md), limites observados.
+- [Fluxos](./flows/), etapas e casos de erro do repositório.
+- [PENDENCIAS.md](./PENDENCIAS.md), questões para revisão.
 
-`listar_profissoes`, `listar_itens_de_fixacao` e `buscar_tecnicos_credenciados`
-chamam o `api-core` (`PERSISTENCE_BASE_URL`, chave em `SERVICE_KEY_CORE`
-enviada no header `X-Service-Key`) e mantêm os campos de saída em português.
-Se o `api-core` recusar a chave ou estiver fora do ar, devolvem
-`{"erro": ...}`.
+## Contribuindo
 
-## Rodando localmente
-
-1. Copie `.env.example` para `.env` e preencha `MCP_API_KEY`, `PERSISTENCE_BASE_URL` e `SERVICE_KEY_CORE`.
-2. Instale dependências com `pip install -r requirements.txt`.
-3. Inicie com `python server.py`.
-
-Para usar o padrão organizacional de ambiente, prefira `make env ENV=local`
-antes do start.
-
-## Docker
-
-```sh
-docker build -t api-mcp .
-docker run --env-file .env -p 8001:8001 api-mcp
-```
-
-## Testes
-
-```sh
-python -m pytest tests -v
-```
-
-Os testes simulam o `api-core` com um transporte HTTP falso e não requerem o
-`api-core` no ar nem um `.env` real.
-
-## Documentação e contribuição
-
-- [Arquitetura](./ARCHITECTURE.md)
-- [Como executar](./RUNNING.md)
-- [Guia de contribuição](./.github/CONTRIBUTING.md)
-- [CODEOWNERS](./.github/CODEOWNERS)
+- [CONTRIBUTING.md](https://github.com/Solierrr/.github/blob/main/.github/CONTRIBUTING.md), convenções de contribuição.
+- [CODE_OF_CONDUCT.md](https://github.com/Solierrr/.github/blob/main/CODE_OF_CONDUCT.md), código de conduta.
+- [SECURITY.md](https://github.com/Solierrr/.github/blob/main/SECURITY.md), relato de vulnerabilidades.

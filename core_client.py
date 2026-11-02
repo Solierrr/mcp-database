@@ -7,7 +7,7 @@ _transport: httpx.AsyncBaseTransport | None = None
 
 
 def _cabecalhos() -> dict[str, str]:
-    return {"X-Service-Key": settings.SERVICE_KEY_CORE}
+    return {"X-Service-Key": settings.SERVICE_KEY} if settings.SERVICE_KEY else {}
 
 
 def _profissao(item: dict) -> dict:
@@ -78,3 +78,12 @@ def _mensagem_de_erro(resposta: httpx.Response) -> str:
     if isinstance(detalhe, str) and detalhe:
         return detalhe
     return f"O serviço de dados respondeu com erro {resposta.status_code}."
+
+
+async def ping(timeout: float) -> None:
+    """Falha (httpx.HTTPError) se o api-core não responder à saúde dentro do tempo."""
+    async with httpx.AsyncClient(
+        base_url=settings.PERSISTENCE_BASE_URL, timeout=timeout, transport=_transport
+    ) as client:
+        resposta = await client.get("/actuator/health")
+        resposta.raise_for_status()

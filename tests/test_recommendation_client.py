@@ -94,8 +94,31 @@ def test_limite_corta_a_lista(servidor):
     assert len(resultado["itens"]) == 2
 
 
-def test_envia_a_chave_quando_configurada(servidor, monkeypatch):
-    monkeypatch.setattr(settings, "RECOMMENDATION_API_KEY", "chave-de-teste")
+@pytest.mark.parametrize(
+    "chave_de_servico, chave_antiga, esperado",
+    [
+        (
+            "chave-de-servico-do-mcp-database-01",
+            None,
+            {"X-Service-Key": "chave-de-servico-do-mcp-database-01"},
+        ),
+        (
+            "chave-de-servico-do-mcp-database-01",
+            "chave-antiga",
+            {
+                "X-Service-Key": "chave-de-servico-do-mcp-database-01",
+                "X-Recommendation-Key": "chave-antiga",
+            },
+        ),
+        (None, "chave-antiga", {"X-Recommendation-Key": "chave-antiga"}),
+        (None, None, {}),
+    ],
+)
+def test_envia_as_chaves_configuradas(
+    servidor, monkeypatch, chave_de_servico, chave_antiga, esperado
+):
+    monkeypatch.setattr(settings, "SERVICE_KEY", chave_de_servico)
+    monkeypatch.setattr(settings, "RECOMMENDATION_API_KEY", chave_antiga)
     requisicoes = servidor(
         lambda r: httpx.Response(
             200, json={"source": "graph", "items": [], "warnings": []}
@@ -104,7 +127,12 @@ def test_envia_a_chave_quando_configurada(servidor, monkeypatch):
 
     asyncio.run(recommendation_client.buscar_feed("offers", {}, 10))
 
-    assert requisicoes[0].headers["X-Recommendation-Key"] == "chave-de-teste"
+    enviados = {
+        nome: requisicoes[0].headers[nome]
+        for nome in ("X-Service-Key", "X-Recommendation-Key")
+        if nome in requisicoes[0].headers
+    }
+    assert enviados == esperado
 
 
 def test_erro_da_api_vira_mensagem_para_o_agente(servidor):
