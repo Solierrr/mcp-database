@@ -10,9 +10,12 @@ _transport: httpx.AsyncBaseTransport | None = None
 
 
 def _cabecalhos() -> dict[str, str]:
+    cabecalhos = {}
+    if settings.SERVICE_KEY:
+        cabecalhos["X-Service-Key"] = settings.SERVICE_KEY
     if settings.RECOMMENDATION_API_KEY:
-        return {"X-Recommendation-Key": settings.RECOMMENDATION_API_KEY}
-    return {}
+        cabecalhos["X-Recommendation-Key"] = settings.RECOMMENDATION_API_KEY
+    return cabecalhos
 
 
 def _ranking(item: dict) -> dict:

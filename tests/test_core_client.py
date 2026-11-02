@@ -135,7 +135,7 @@ def test_resposta_vazia_devolve_lista_vazia(servidor):
 
 
 def test_envia_a_chave_de_servico(servidor, monkeypatch):
-    monkeypatch.setattr(settings, "SERVICE_KEY_CORE", "chave-de-teste")
+    monkeypatch.setattr(settings, "SERVICE_KEY", "chave-de-teste")
     requisicoes = servidor(lambda r: httpx.Response(200, json=[]))
 
     asyncio.run(core_client.buscar_catalogo("professions", {}))
@@ -233,3 +233,26 @@ def test_resposta_com_corpo_invalido_vira_erro(servidor):
     resultado = asyncio.run(core_client.buscar_catalogo("professions", {}))
 
     assert resultado == {"erro": "O serviço de dados está indisponível no momento."}
+
+
+def test_ping_consulta_a_saude_do_core(monkeypatch):
+    chamadas = []
+
+    def tratador(request: httpx.Request) -> httpx.Response:
+        chamadas.append(request)
+        return httpx.Response(200, json={"status": "UP"})
+
+    monkeypatch.setattr(core_client, "_transport", httpx.MockTransport(tratador))
+
+    asyncio.run(core_client.ping(2))
+
+    assert chamadas[0].url.path == "/actuator/health"
+
+
+def test_ping_falha_quando_o_core_responde_erro(monkeypatch):
+    monkeypatch.setattr(
+        core_client, "_transport", httpx.MockTransport(lambda r: httpx.Response(503))
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        asyncio.run(core_client.ping(2))

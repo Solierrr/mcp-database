@@ -5,4 +5,8 @@ qualquer test module ser importado."""
 import os
 
 os.environ.setdefault("MCP_API_KEY", "fake-key-for-tests")
-os.environ.setdefault("SERVICE_KEY_CORE", "fake-service-key-for-tests")
+os.environ.setdefault("SERVICE_KEY", "chave-de-teste-do-mcp-database-0001")
+os.environ.setdefault("SERVICE_KEY_AI_ASSISTANT", "chave-de-teste-do-ai-assistant-0001")
+os.environ.setdefault(
+    "SERVICE_KEY_AI_OPERATIONAL", "chave-de-teste-do-ai-operational-01"
+)

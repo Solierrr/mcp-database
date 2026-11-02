@@ -90,27 +90,6 @@ def test_buscar_tecnicos_credenciados_sem_filtros():
     )
 
 
-def test_autenticacao_por_api_key():
-    """Os 3 casos num teste só: StreamableHTTPSessionManager.run() só pode
-    ser chamado uma vez por instância — TestClient(server.app) separado em
-    cada teste quebraria a partir do segundo."""
-    accept = {"Accept": "application/json, text/event-stream"}
-
-    with TestClient(server.app) as client:
-        sem_chave = client.post("/mcp", json={}, headers=accept)
-        assert sem_chave.status_code == 401
-
-        chave_errada = client.post(
-            "/mcp", json={}, headers={**accept, "x-api-key": "errada"}
-        )
-        assert chave_errada.status_code == 401
-
-        chave_certa = client.post(
-            "/mcp", json={}, headers={**accept, "x-api-key": settings.MCP_API_KEY}
-        )
-        assert chave_certa.status_code != 401
-
-
 def test_listar_itens_de_fixacao_filtra_tipo_marca_e_limite():
     with patch("server.buscar_catalogo", new_callable=AsyncMock) as catalogo:
         catalogo.return_value = [{"fornecedor": "ACME", "tipo": "RAIL"}]
@@ -148,4 +127,150 @@ def test_ferramentas_de_catalogo_chamam_o_core_pelo_cliente_http():
 
     assert resultado == [{"id": "p-1", "nome": "Eletricista"}]
     assert chamadas[0].url.path == "/internal/catalog/professions"
-    assert chamadas[0].headers["X-Service-Key"] == settings.SERVICE_KEY_CORE
+    assert chamadas[0].headers["X-Service-Key"] == settings.SERVICE_KEY
+
+
+ACCEPT = {"Accept": "application/json, text/event-stream"}
+
+
+def test_chaves_aceitas_chegam_ao_mcp():
+    """Os casos aceitos num teste só: StreamableHTTPSessionManager.run() só pode
+    ser chamado uma vez por instância — TestClient(server.app) separado em
+    cada teste quebraria a partir do segundo."""
+    with TestClient(server.app) as client:
+        for cabecalho in (
+            {"X-Service-Key": settings.SERVICE_KEY_AI_ASSISTANT},
+            {"X-Service-Key": settings.SERVICE_KEY_AI_OPERATIONAL},
+            {"x-api-key": settings.MCP_API_KEY},
+        ):
+            resposta = client.post("/mcp", json={}, headers={**ACCEPT, **cabecalho})
+            assert resposta.status_code not in (401, 403)
+
+
+@pytest.mark.parametrize(
+    "cabecalho",
+    [
+        {},
+        {"X-Service-Key": "chave-errada-com-mais-de-32-caracteres"},
+        {"x-api-key": "errada"},
+        {"X-Service-Key": "chave-errada-com-mais-de-32-caracteres", "x-api-key": ""},
+    ],
+)
+def test_chave_ausente_ou_invalida_responde_401_em_problem_detail(cabecalho):
+    resposta = TestClient(server.app).post(
+        "/mcp", json={}, headers={**ACCEPT, **cabecalho}
+    )
+
+    assert resposta.status_code == 401
+    assert resposta.headers["content-type"] == "application/problem+json"
+    corpo = resposta.json()
+    assert corpo["errorCode"] == "UNAUTHENTICATED"
+    assert corpo["status"] == 401
+    assert corpo["instance"] == "/mcp"
+
+
+def test_chave_invalida_nao_cai_para_a_chave_antiga():
+    resposta = TestClient(server.app).post(
+        "/mcp",
+        json={},
+        headers={
+            **ACCEPT,
+            "X-Service-Key": "chave-errada-com-mais-de-32-caracteres",
+            "x-api-key": settings.MCP_API_KEY,
+        },
+    )
+
+    assert resposta.status_code == 401
+
+
+def test_sem_chave_antiga_configurada_x_api_key_e_recusada(monkeypatch):
+    monkeypatch.setattr(settings, "MCP_API_KEY", None)
+
+    resposta = TestClient(server.app).post(
+        "/mcp", json={}, headers={**ACCEPT, "x-api-key": ""}
+    )
+
+    assert resposta.status_code == 401
+
+
+def test_destino_sem_chaves_configuradas_recusa_tudo(monkeypatch):
+    monkeypatch.setattr(settings, "MCP_API_KEY", None)
+    monkeypatch.setattr(settings, "SERVICE_KEY_AI_ASSISTANT", None)
+    monkeypatch.setattr(settings, "SERVICE_KEY_AI_OPERATIONAL", None)
+
+    resposta = TestClient(server.app).post(
+        "/mcp", json={}, headers={**ACCEPT, "X-Service-Key": ""}
+    )
+
+    assert resposta.status_code == 401
+
+
+def test_chamador_valido_fora_da_rota_responde_403(monkeypatch):
+    monkeypatch.setattr(server, "_CHAMADORES_DO_MCP", ("ai-assistant",))
+
+    resposta = TestClient(server.app).post(
+        "/mcp",
+        json={},
+        headers={**ACCEPT, "X-Service-Key": settings.SERVICE_KEY_AI_OPERATIONAL},
+    )
+
+    assert resposta.status_code == 403
+    assert resposta.json()["errorCode"] == "FORBIDDEN"
+
+
+def test_chave_de_servico_curta_impede_a_partida():
+    from pydantic import ValidationError
+
+    from settings import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(SERVICE_KEY_AI_ASSISTANT="curta")
+
+
+def test_versao_vem_do_version_txt():
+    from pathlib import Path
+
+    from version import VERSION
+
+    assert VERSION == Path("version.txt").read_text(encoding="utf-8").strip()
+    assert VERSION
+
+
+def test_health_responde_vivo_com_a_versao_sem_chave():
+    from version import VERSION
+
+    resposta = TestClient(server.app).get("/health")
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"status": "UP", "version": VERSION}
+
+
+def test_ready_responde_up_quando_o_core_responde():
+    with patch("server.core_client.ping", new_callable=AsyncMock) as ping:
+        resposta = TestClient(server.app).get("/ready")
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"status": "UP"}
+    ping.assert_called_once_with(2)
+
+
+def test_ready_responde_down_sem_detalhes_quando_o_core_falha():
+    with patch(
+        "server.core_client.ping",
+        new_callable=AsyncMock,
+        side_effect=httpx.ConnectError("sem core"),
+    ):
+        resposta = TestClient(server.app).get("/ready")
+
+    assert resposta.status_code == 503
+    assert resposta.json() == {"status": "DOWN"}
+
+
+def test_ready_responde_down_quando_o_core_nao_responde_a_tempo():
+    with patch(
+        "server.core_client.ping", new_callable=AsyncMock, side_effect=TimeoutError
+    ):
+        resposta = TestClient(server.app).get("/ready")
+
+    assert resposta.status_code == 503
+    assert resposta.json() == {"status": "DOWN"}
