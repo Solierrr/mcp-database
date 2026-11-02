@@ -4,9 +4,9 @@
 
 # Execução local
 
-Use Python 3.14, conforme o Dockerfile, `make`, o `api-core` acessível e Infisical CLI autenticado. O guia comum está em [PYTHON.md](https://github.com/Solierrr/docs-warehouse/blob/main/readme/running/PYTHON.md).
+Use Python 3.14, conforme o Dockerfile, `make`, PostgreSQL acessível e Infisical CLI autenticado. O guia comum está em [PYTHON.md](https://github.com/Solierrr/docs-warehouse/blob/main/readme/running/PYTHON.md).
 
-Execute `make install`, `make vault` e `make dev`, sabendo que a exportação usa as pastas `/mcp`, `/service-keys` e `/service-urls`, e configure o endereço do `api-core` (`PERSISTENCE_BASE_URL`), as chaves dos chamadores e o endereço de recomendações.
+Execute `make install`, `make vault` e `make dev`, sabendo que a exportação usa as pastas `/database`, `/mcp` e `/service-keys`, e configure as variáveis do PostgreSQL, incluindo `DB_POSTGRES_BUSINESS`, as chaves dos chamadores e o endereço de recomendações.
 
 | Comando | Efeito |
 |---|---|
