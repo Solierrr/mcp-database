@@ -1,4 +1,4 @@
-mcp==1.29.1
+mcp==1.30.0
 pydantic-settings
 uvicorn
 starlette
