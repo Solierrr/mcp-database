@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/Solierrr/mcp-database/compare/v0.2.0...v0.3.0) (2026-11-02)
+
+
+### Features
+
+* add the infrastructure items tool ([#29](https://github.com/Solierrr/mcp-database/issues/29)) ([b2a08a7](https://github.com/Solierrr/mcp-database/commit/b2a08a7dba46a33d35479e974fb068c93df7dbf3))
+* add the local run commands ([54432ec](https://github.com/Solierrr/mcp-database/commit/54432ec88e415c0bcecdf02a8bee20be4b708f91))
+* describe the service for the alerts routing ([444eb3d](https://github.com/Solierrr/mcp-database/commit/444eb3d0bd4ca5ae0f20619796c214edaa2beaa3))
+* expose the ranked recommendation feeds as mcp tools ([#28](https://github.com/Solierrr/mcp-database/issues/28)) ([faa6e0f](https://github.com/Solierrr/mcp-database/commit/faa6e0fbfb912d02418f827a66432e178a044dd6))
+* standardize the service contract ([#34](https://github.com/Solierrr/mcp-database/issues/34)) ([f31b5d2](https://github.com/Solierrr/mcp-database/commit/f31b5d255c549c655f2a982e24590da35d22146a))
+* unify the catalog access through the api-core with the service contract ([e86773c](https://github.com/Solierrr/mcp-database/commit/e86773ca2e0ecb29863fadd296af61aef69b4a75))
+
+
+### Bug Fixes
+
+* mcp allowed hosts render ([#23](https://github.com/Solierrr/mcp-database/issues/23)) ([f842b9f](https://github.com/Solierrr/mcp-database/commit/f842b9f27981c8190ffb1bb347692b484e93d40e))
+
 ## [0.2.0](https://github.com/Solierrr/mcp-database/compare/v0.1.0...v0.2.0) (2026-09-30)
 
 
