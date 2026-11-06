@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     RECOMMENDATION_API_URL: str = "http://localhost:8000"
     RECOMMENDATION_API_KEY: str | None = None
     PORT: int = 8001
+    # Hosts extras aceitos no cabeçalho Host (separados por vírgula), ex.: o nome do serviço no cluster
+    MCP_ALLOWED_HOSTS: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", populate_by_name=True

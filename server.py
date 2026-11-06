@@ -35,6 +35,7 @@ mcp = FastMCP(
             "127.0.0.1:*",
             "localhost:*",
             "api-mcp-wey6.onrender.com",
+            *[host.strip() for host in settings.MCP_ALLOWED_HOSTS.split(",") if host.strip()],
         ],
         allowed_origins=[
             "http://127.0.0.1:*",
